@@ -1,55 +1,49 @@
+# ----------------------------------------------------
+# AWS Provider
+# ----------------------------------------------------
 provider "aws" {
-  region = "var.region"
+  region = var.region
 }
 
-resource "aws_instance" "my-server" {
-  ami           = "var.ami"
-  instance_type = "var.instance_type"
-
-  tags = {
-    Name = "terraform"
-  }
-}
-
-# -----------------------------
+# ----------------------------------------------------
 # VPC
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.vpc_cidr
 
-  tags = {
-    Name = "terraform-vpc"
-  }
+  tags = merge(var.common_tags, {
+    Name = "Terraform-VPC"
+  })
 }
 
-# -----------------------------
+# ----------------------------------------------------
 # Public Subnet
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-2a"
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = var.availability_zone
   map_public_ip_on_launch = true
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Public-Subnet"
-  }
+  })
 }
 
-# -----------------------------
+# ----------------------------------------------------
 # Internet Gateway
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Terraform-IGW"
-  }
+  })
 }
 
-# -----------------------------
-# Route Table
-# -----------------------------
+# ----------------------------------------------------
+# Public Route Table
+# ----------------------------------------------------
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.main.id
 
@@ -58,28 +52,28 @@ resource "aws_route_table" "public_rt" {
     gateway_id = aws_internet_gateway.igw.id
   }
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Public-RouteTable"
-  }
+  })
 }
 
-# -----------------------------
+# ----------------------------------------------------
 # Route Table Association
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_route_table_association" "public_assoc" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public_rt.id
 }
 
-# -----------------------------
+# ----------------------------------------------------
 # Security Group
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_security_group" "web" {
   name   = "terraform-sg"
   vpc_id = aws_vpc.main.id
 
   ingress {
-    description = "SSH"
+    description = "Allow SSH"
 
     from_port   = 22
     to_port     = 22
@@ -89,7 +83,7 @@ resource "aws_security_group" "web" {
   }
 
   ingress {
-    description = "HTTP"
+    description = "Allow HTTP"
 
     from_port   = 80
     to_port     = 80
@@ -99,6 +93,7 @@ resource "aws_security_group" "web" {
   }
 
   egress {
+    description = "Allow All Outbound"
 
     from_port   = 0
     to_port     = 0
@@ -107,26 +102,22 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Terraform-SG"
-  }
+  })
 }
 
-# -----------------------------
+# ----------------------------------------------------
 # EC2 Instance
-# -----------------------------
+# ----------------------------------------------------
 resource "aws_instance" "web" {
+  ami                         = var.ami
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  associate_public_ip_address = true
 
-  ami                    = "ami-0e5497a77ef21b5ac"
-  instance_type          = "t3.micro"
-
-  subnet_id              = aws_subnet.public.id
-
-  vpc_security_group_ids = [aws_security_group.web.id]
-
-  tags = {
+  tags = merge(var.common_tags, {
     Name = "Terraform-WebServer"
-  }
+  })
 }
-
-
