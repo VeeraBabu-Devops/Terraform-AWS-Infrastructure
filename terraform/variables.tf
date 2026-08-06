@@ -13,6 +13,11 @@ variable "instance_type" {
   type        = string
 }
 
+variable "enable_monitoring" {
+  type    = bool
+  default = false
+}
+
 variable "vpc_cidr" {
   type = string
 }
