@@ -15,7 +15,7 @@ variable "instance_type" {
 
 variable "enable_monitoring" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "vpc_cidr" {
